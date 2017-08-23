@@ -18,8 +18,8 @@ livego是基于golang开发的rtmp服务器<br/>
 *  静态relay支持：支持静态推流，拉流
 *  统计信息支持：支持http在线查看流状态
 
-## rtmp配置指引
-### livego的rtmp配置是基于json格式，简单好用。<br/> 
+# rtmp配置指引
+## livego的rtmp配置是基于json格式，简单好用。<br/> 
 
 ```json
 {
@@ -33,7 +33,7 @@ livego是基于golang开发的rtmp服务器<br/>
 }
 ```
 
-### 提供http动态控制流的rtmp push和pull功能。<br/> 
+## 提供http动态控制流的rtmp push和pull功能。<br/> 
 
 ``` json
 {
@@ -54,13 +54,13 @@ livego是基于golang开发的rtmp服务器<br/>
 }
 ```
 > 例子1:
-动态pull功能, pull进来一个直播，并在服务器对外生成rtmp://127.0.0.1/live/123456的直播服务
-pull开始: 
-curl -v "http://127.0.0.1:8070/control/pull?oper=start&app=live&name=123456&url=rtmp://live.hkstv.hk.lxdns.com/live/hks"
-pull结束: 
+动态pull功能, pull进来一个直播，并在服务器对外生成rtmp://127.0.0.1/live/123456的直播服务<br/>
+pull开始: <br/>
+curl -v "http://127.0.0.1:8070/control/pull?oper=start&app=live&name=123456&url=rtmp://live.hkstv.hk.lxdns.com/live/hks"<br/>
+pull结束: <br/>
 curl -v "http://127.0.0.1:8070/control/pull?oper=stop&app=live&name=123456&url=rtmp://live.hkstv.hk.lxdns.com/live/hks"
 
-### 提供静态rtmp push功能
+## 提供静态rtmp push功能
 ``` json
 {
     "server":[
