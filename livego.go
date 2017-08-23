@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net"
+	"time"
+
 	"github.com/livego/concurrent-map"
 	"github.com/livego/configure"
 	log "github.com/livego/logging"
@@ -11,8 +14,6 @@ import (
 	"github.com/livego/protocol/httpopera"
 	"github.com/livego/protocol/rtmp"
 	"github.com/livego/protocol/rtmp/rtmprelay"
-	"net"
-	"time"
 )
 
 var (
@@ -133,6 +134,7 @@ func startHTTPOpera(stream *rtmp.RtmpStream, l net.Listener) net.Listener {
 	var err error
 
 	operaAddr := fmt.Sprintf(":%d", configure.GetHttpOperPort())
+	rtmpAddr := fmt.Sprintf(":%d", configure.GetListenPort())
 	if l == nil {
 		opListen, err = net.Listen("tcp", operaAddr)
 		if err != nil {
@@ -142,7 +144,7 @@ func startHTTPOpera(stream *rtmp.RtmpStream, l net.Listener) net.Listener {
 		opListen = l
 	}
 
-	opServer := httpopera.NewServer(stream, operaAddr)
+	opServer := httpopera.NewServer(stream, rtmpAddr)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
