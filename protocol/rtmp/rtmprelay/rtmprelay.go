@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+
 	log "github.com/livego/logging"
 	"github.com/livego/protocol/amf"
 	"github.com/livego/protocol/rtmp/core"
-	"io"
 )
 
 var (
@@ -43,7 +44,7 @@ func (self *RtmpRelay) rcvPlayChunkStream() {
 
 		if self.startflag == false {
 			self.connectPlayClient.Close(nil)
-			log.Info("rcvPlayChunkStream close: playurl=%s, publishurl=%s", self.PlayUrl, self.PublishUrl)
+			log.Infof("rcvPlayChunkStream close: playurl=%s, publishurl=%s", self.PlayUrl, self.PublishUrl)
 			break
 		}
 		err := self.connectPlayClient.Read(&rc)
@@ -58,9 +59,9 @@ func (self *RtmpRelay) rcvPlayChunkStream() {
 			vs, err := self.connectPlayClient.DecodeBatch(r, amf.AMF0)
 
 			log.Infof("rcvPlayRtmpMediaPacket: vs=%v, err=%v", vs, err)
-		case 18:
-			log.Infof("rcvPlayRtmpMediaPacket: metadata....")
-		case 8, 9:
+		// case 18:
+		// 	log.Info("rcvPlayRtmpMediaPacket: metadata....")
+		case 18, 8, 9:
 			self.cs_chan <- rc
 		}
 	}
