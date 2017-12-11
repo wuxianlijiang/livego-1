@@ -93,8 +93,8 @@ func (s *Server) Serve(listener net.Listener) (err error) {
 		}
 
 		conn := core.NewConn(netconn, 4*1024)
-		log.Info("new client, connect remote:", conn.RemoteAddr().String(),
-			"local:", conn.LocalAddr().String())
+		//log.Info("new client, connect remote:", conn.RemoteAddr().String(),
+		//	"local:", conn.LocalAddr().String())
 		go s.handleConn(conn)
 	}
 }
@@ -118,7 +118,7 @@ func (s *Server) ExecPush(key string) {
 func (s *Server) handleConn(conn *core.Conn) error {
 	if err := conn.HandshakeServer(); err != nil {
 		conn.Close()
-		log.Error("handleConn HandshakeServer err:", err)
+		//log.Error("handleConn HandshakeServer err:", err)
 		return err
 	}
 	connServer := core.NewConnServer(conn)
@@ -129,8 +129,8 @@ func (s *Server) handleConn(conn *core.Conn) error {
 		return err
 	}
 
-	appname, name, url := connServer.GetInfo()
-	log.Infof("handleConn: appname=%s, name=%s, url=%s", appname, name, url)
+	appname, name, url, remoteconn := connServer.GetInfo()
+	log.Infof("handleConn: appname=%s, name=%s, url=%s, peerIP=%s", appname, name, url, remoteconn.RemoteAddr().String())
 
 	log.Infof("handleConn: IsPublisher=%v", connServer.IsPublisher())
 	if connServer.IsPublisher() {
@@ -165,7 +165,7 @@ func (s *Server) handleConn(conn *core.Conn) error {
 }
 
 type GetInFo interface {
-	GetInfo() (string, string, string)
+	GetInfo() (string, string, string, *core.Conn) //app string, name string, url string, *core.Conn
 }
 
 type StreamReadWriteCloser interface {
@@ -177,6 +177,7 @@ type StreamReadWriteCloser interface {
 
 type StaticsBW struct {
 	StreamId               uint32
+	PeerIP                 string
 	VideoDatainBytes       uint64
 	LastVideoDatainBytes   uint64
 	VideoSpeedInBytesperMS uint64
@@ -203,7 +204,7 @@ func NewVirWriter(conn StreamReadWriteCloser) *VirWriter {
 		conn:        conn,
 		RWBaser:     av.NewRWBaser(time.Second * time.Duration(*writeTimeout)),
 		packetQueue: make(chan *av.Packet, maxQueueNum),
-		WriteBWInfo: StaticsBW{0, 0, 0, 0, 0, 0, 0, 0},
+		WriteBWInfo: StaticsBW{0, "", 0, 0, 0, 0, 0, 0, 0},
 	}
 
 	go ret.Check()
@@ -219,6 +220,8 @@ func NewVirWriter(conn StreamReadWriteCloser) *VirWriter {
 func (v *VirWriter) SaveStatics(streamid uint32, length uint64, isVideoFlag bool) {
 	nowInMS := int64(time.Now().UnixNano() / 1e6)
 
+	_, _, _, conn := v.conn.GetInfo()
+	v.WriteBWInfo.PeerIP = conn.RemoteAddr().String()
 	v.WriteBWInfo.StreamId = streamid
 	if isVideoFlag {
 		v.WriteBWInfo.VideoDatainBytes = v.WriteBWInfo.VideoDatainBytes + length
@@ -345,7 +348,7 @@ func (v *VirWriter) SendPacket() error {
 
 func (v *VirWriter) Info() (ret av.Info) {
 	ret.UID = v.Uid
-	_, _, URL := v.conn.GetInfo()
+	_, _, URL, _ := v.conn.GetInfo()
 	ret.URL = URL
 	_url, err := url.Parse(URL)
 	if err != nil {
@@ -357,7 +360,7 @@ func (v *VirWriter) Info() (ret av.Info) {
 }
 
 func (v *VirWriter) Close(err error) {
-	log.Info("player ", v.Info(), "closed: "+err.Error())
+	log.Info("VirWriter.player ", v.Info(), "closed: "+err.Error())
 	if !v.closed {
 		close(v.packetQueue)
 	}
@@ -379,14 +382,16 @@ func NewVirReader(conn StreamReadWriteCloser) *VirReader {
 		conn:       conn,
 		RWBaser:    av.NewRWBaser(time.Second * time.Duration(*writeTimeout)),
 		demuxer:    flv.NewDemuxer(),
-		ReadBWInfo: StaticsBW{0, 0, 0, 0, 0, 0, 0, 0},
+		ReadBWInfo: StaticsBW{0, "", 0, 0, 0, 0, 0, 0, 0},
 	}
 }
 
 func (v *VirReader) SaveStatics(streamid uint32, length uint64, isVideoFlag bool) {
 	nowInMS := int64(time.Now().UnixNano() / 1e6)
 
+	_, _, _, conn := v.conn.GetInfo()
 	v.ReadBWInfo.StreamId = streamid
+	v.ReadBWInfo.PeerIP = conn.RemoteAddr().String()
 	if isVideoFlag {
 		v.ReadBWInfo.VideoDatainBytes = v.ReadBWInfo.VideoDatainBytes + length
 	} else {
@@ -416,9 +421,10 @@ func (v *VirReader) Read(p *av.Packet) (err error) {
 	}()
 
 	v.SetPreTime()
-	var cs core.ChunkStream
+	cs := &core.ChunkStream{}
+
 	for {
-		err = v.conn.Read(&cs)
+		err = v.conn.Read(cs)
 		if err != nil {
 			return err
 		}
@@ -444,7 +450,7 @@ func (v *VirReader) Read(p *av.Packet) (err error) {
 
 func (v *VirReader) Info() (ret av.Info) {
 	ret.UID = v.Uid
-	_, _, URL := v.conn.GetInfo()
+	_, _, URL, _ := v.conn.GetInfo()
 	ret.URL = URL
 	_url, err := url.Parse(URL)
 	if err != nil {
@@ -455,6 +461,6 @@ func (v *VirReader) Info() (ret av.Info) {
 }
 
 func (v *VirReader) Close(err error) {
-	log.Info("publisher ", v.Info(), "closed: "+err.Error())
+	log.Info("VirReader.publisher ", v.Info(), "closed: "+err.Error())
 	v.conn.Close(err)
 }

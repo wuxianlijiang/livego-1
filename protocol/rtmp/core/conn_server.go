@@ -342,10 +342,11 @@ func (connServer *ConnServer) Read(c *ChunkStream) (err error) {
 	return connServer.conn.Read(c)
 }
 
-func (connServer *ConnServer) GetInfo() (app string, name string, url string) {
+func (connServer *ConnServer) GetInfo() (app string, name string, url string, conn *Conn) {
 	app = connServer.ConnInfo.App
 	name = connServer.PublishInfo.Name
 	url = connServer.ConnInfo.TcUrl + "/" + connServer.PublishInfo.Name
+	conn = connServer.conn
 	return
 }
 

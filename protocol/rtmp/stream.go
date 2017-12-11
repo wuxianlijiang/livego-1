@@ -11,7 +11,7 @@ import (
 	"reflect"
 	//"strings"
 	"fmt"
-	"io"
+	//"io"
 	"os/exec"
 	"time"
 )
@@ -94,9 +94,11 @@ func (rs *RtmpStream) GetStreams() cmap.ConcurrentMap {
 func (rs *RtmpStream) CheckAlive() {
 	for {
 		<-time.After(5 * time.Second)
+		//log.Infof("RtmpStream.CheckAlive count=%d", rs.streams.Count())
 		for item := range rs.streams.IterBuffered() {
 			v := item.Val.(*Stream)
 			if v.CheckAlive() == 0 {
+				log.Infof("RtmpStream.CheckAlive remove(%s)", item.Key)
 				rs.streams.Remove(item.Key)
 			}
 		}
@@ -317,16 +319,11 @@ func (s *Stream) TransStart() {
 			s.closeInter()
 			return
 		}
-		tryCount := 0
+
 		for {
 			err := s.r.Read(&p)
 			if err != nil {
-				tryCount++
-				if tryCount < 2 && err != io.EOF {
-					time.Sleep(time.Millisecond * 10)
-					continue
-				}
-				log.Info("Stream Read error:", s.info, err)
+				log.Error("Stream Read error:", s.info, err)
 				s.isStart = false
 				s.closeInter()
 				return
@@ -343,7 +340,7 @@ func (s *Stream) TransStart() {
 		s.cache.Write(p)
 
 		if s.ws.IsEmpty() {
-		    continue
+			continue
 		}
 
 		for item := range s.ws.IterBuffered() {
@@ -382,16 +379,20 @@ func (s *Stream) TransStop() {
 func (s *Stream) CheckAlive() (n int) {
 	if s.r != nil && s.isStart {
 		if s.r.Alive() {
+			//log.Infof("Stream.CheckAlive.read Alive ok urlkey=%s", s.info.Key)
 			n++
 		} else {
+			log.Error("Stream.CheckAlive read error:", s.info.Key)
 			s.r.Close(errors.New("read timeout"))
 		}
 	}
 	for item := range s.ws.IterBuffered() {
 		v := item.Val.(*PackWriterCloser)
 		if v.w != nil {
+			//log.Infof("Stream.CheckAlive.write Alive ok urlkey=%s", s.info.Key)
 			if !v.w.Alive() && s.isStart {
 				s.ws.Remove(item.Key)
+				log.Error("Stream.CheckAlive write error:", s.info.Key)
 				v.w.Close(errors.New("write timeout"))
 				continue
 			}

@@ -50,6 +50,7 @@ type ConnClient struct {
 	encoder       *amf.Encoder
 	decoder       *amf.Decoder
 	bytesw        *bytes.Buffer
+	IsStartFlag   bool
 }
 
 func NewConnClient() *ConnClient {
@@ -59,6 +60,10 @@ func NewConnClient() *ConnClient {
 		encoder: &amf.Encoder{},
 		decoder: &amf.Decoder{},
 	}
+}
+
+func (self *ConnClient) GetUrl() string {
+	return self.url
 }
 
 func (connClient *ConnClient) DecodeBatch(r io.Reader, ver amf.Version) (ret []interface{}, err error) {
@@ -429,6 +434,9 @@ func (connClient *ConnClient) StartSubStream(url string, index int, method strin
 }
 
 func (connClient *ConnClient) Start(url string, method string) error {
+	if connClient.IsStartFlag {
+		return errors.New(fmt.Sprintf("ConnClient has already started url=%s", url))
+	}
 	u, err := neturl.Parse(url)
 	if err != nil {
 		return err
@@ -512,7 +520,12 @@ func (connClient *ConnClient) Start(url string, method string) error {
 		}
 	}
 
+	connClient.IsStartFlag = true
 	return nil
+}
+
+func (connClient *ConnClient) IsStart() bool {
+	return connClient.IsStartFlag
 }
 
 func (connClient *ConnClient) Write(c ChunkStream) error {
@@ -531,10 +544,11 @@ func (connClient *ConnClient) Read(c *ChunkStream) (err error) {
 	return connClient.conn.Read(c)
 }
 
-func (connClient *ConnClient) GetInfo() (app string, name string, url string) {
+func (connClient *ConnClient) GetInfo() (app string, name string, url string, conn *Conn) {
 	app = connClient.app
 	name = connClient.title
 	url = connClient.url
+	conn = connClient.conn
 	return
 }
 

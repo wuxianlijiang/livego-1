@@ -22,6 +22,7 @@ import (
         "servername":"live",
         "exec_push":["./helloworld1", "./helloworld2"],
         "exec_push_done":["./helloworld1", "./helloworld2"],
+        "report":["127.0.0.1"],
 	    "static_push":[{"master_prefix":"live/trans/inke/mlinkm", "upstream":"rtmp://inke.8686c.com/"}],
 	    "static_pull":[{"type":"http-flv",
 	                    "source":"http://pull99.a8.com/live/1500365043587794.flv",
@@ -58,6 +59,7 @@ type ServerInfo struct {
 	Servername      string
 	Exec_push       []string
 	Exec_push_done  []string
+	Report          []string
 	Static_push     []StaticPushInfo
 	Static_pull     []StaticPullInfo
 	Sub_static_push []SubStaticPush
@@ -115,6 +117,16 @@ func LoadConfig(configfilename string) error {
 	}
 
 	return nil
+}
+
+func GetReportList() []string {
+	var reportlist []string
+
+	for _, serverItem := range RtmpServercfg.Servers {
+		reportlist = append(reportlist, serverItem.Report...)
+	}
+
+	return reportlist
 }
 
 func GetExecPush() []string {
